@@ -44,11 +44,17 @@
 #define USER_INFLUX "luftdaten"
 #define PWD_INFLUX "info"
 
+// Definition I2C Pins
+#define I2C_SCL D1
+#define I2C_SDA D2
+
 // DHT22, Sensor Temperatur und Luftfeuchte
 #define DHT_READ 1
 #define DHT_TYPE DHT22
 #define DHT_API_PIN 7
-#if defined(ESP8266)
+#if defined(ARDUINO_ESP8266_WEMOS_D1MINI)
+#define DHT_PIN D7
+#elif defined(ESP8266)
 #define DHT_PIN D7
 #endif
 #if defined(ARDUINO_SAMD_ZERO)
@@ -58,7 +64,10 @@
 // HTU21D, Sensor Temperatur und Luftfeuchte
 #define HTU21D_READ 0
 #define HTU21D_API_PIN 7
-#if defined(ESP8266)
+#if defined(ARDUINO_ESP8266_WEMOS_D1MINI)
+#define HTU21D_PIN_SCL I2C_SCL
+#define HTU21D_PIN_SDA I2C_SDA
+#elif defined(ESP8266)
 #define HTU21D_PIN_SCL D4
 #define HTU21D_PIN_SDA D3
 #endif
@@ -74,7 +83,10 @@
 // SDS011, der etwas teuerere Feinstaubsensor
 #define SDS_READ 1
 #define SDS_API_PIN 1
-#if defined(ESP8266)
+#if defined(ARDUINO_ESP8266_WEMOS_D1MINI)
+#define SDS_PIN_RX D3
+#define SDS_PIN_TX D4
+#elif defined(ESP8266)
 // Serial confusion: These definitions are based on SoftSerial
 // TX (transmitting) pin on one side goes to RX (receiving) pin on other side
 // SoftSerial RX PIN is D1 and goes to SDS TX
@@ -99,7 +111,10 @@
 // BMP180, Luftdruck-Sensor
 #define BMP_READ 0
 #define BMP_API_PIN 3
-#if defined(ESP8266)
+#if defined(ARDUINO_ESP8266_WEMOS_D1MINI)
+#define BMP_PIN_SCL I2C_SCL
+#define BMP_PIN_SDA I2C_SDA
+#elif defined(ESP8266)
 #define BMP_PIN_SCL D4
 #define BMP_PIN_SDA D3
 #endif
@@ -107,7 +122,10 @@
 // BMP280, Luftdruck-Sensor
 #define BMP280_READ 0
 #define BMP280_API_PIN 3
-#if defined(ESP8266)
+#if defined(ARDUINO_ESP8266_WEMOS_D1MINI)
+#define BMP280_PIN_SCL I2C_SCL
+#define BMP280_PIN_SDA I2C_SDA
+#elif defined(ESP8266)
 #define BMP280_PIN_SCL D4
 #define BMP280_PIN_SDA D3
 #endif
@@ -115,7 +133,10 @@
 // BME280, Luftdruck-Sensor
 #define BME280_READ 0
 #define BME280_API_PIN 11
-#if defined(ESP8266)
+#if defined(ARDUINO_ESP8266_WEMOS_D1MINI)
+#define BME280_PIN_SCL I2C_SCL
+#define BME280_PIN_SDA I2C_SDA
+#elif defined(ESP8266)
 #define BME280_PIN_SCL D4
 #define BME280_PIN_SDA D3
 #endif
@@ -123,8 +144,30 @@
 // DS18B20, Temperatur-Sensor
 #define DS18B20_READ 0
 #define DS18B20_API_PIN 13
-#if defined(ESP8266)
+#if defined(ARDUINO_ESP8266_WEMOS_D1MINI)
+#define DS18B20_PIN D2
+#elif defined(ESP8266)
 #define DS18B20_PIN D7
+#endif
+
+// SHT30, Temperatur-Sensor
+#define SHT30_READ 0
+#define SHT30_API_PIN 14
+#if defined(ARDUINO_ESP8266_WEMOS_D1MINI)
+#define SHT30_PIN_SCL I2C_SCL
+#define SHT30_PIN_SDA I2C_SDA
+#elif defined(ESP8266)
+#define SHT30_PIN_SCL D4
+#define SHT30_PIN_SDA D3
+#endif
+
+// SSD1306, OLED Display
+#if defined(ARDUINO_ESP8266_WEMOS_D1MINI)
+#define SSD1306_PIN_SCL I2C_SCL
+#define SSD1306_PIN_SDA I2C_SDA
+#elif defined(ESP8266)
+#define SSD1306_PIN_SCL D4
+#define SSD1306_PIN_SDA D3
 #endif
 
 

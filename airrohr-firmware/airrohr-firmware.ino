@@ -100,6 +100,7 @@
 #include <Adafruit_BMP280.h>
 #include <Adafruit_BME280.h>
 #include <DallasTemperature.h>
+#include <WEMOS_SHT3X.h>
 #include <TinyGPS++.h>
 #include <Ticker.h>
 
@@ -148,6 +149,7 @@ bool bmp280_init_failed = 0;
 bool bme280_read = 0;
 bool bme280_init_failed = 0;
 bool ds18b20_read = 0;
+bool sht30_read = 1;
 bool gps_read = 0;
 bool send2dusti = 1;
 bool send2madavi = 1;
@@ -211,7 +213,7 @@ RHReliableDatagram manager(rf69, CLIENT_ADDRESS);
 /* Display definitions                                           *
 /*****************************************************************/
 #if defined(ESP8266)
-SSD1306   display(0x3c, D3, D4);
+SSD1306   display(0x3c, SSD1306_PIN_SDA, SSD1306_PIN_SCL);
 LiquidCrystal_I2C lcd_27(0x27, 16, 2);
 LiquidCrystal_I2C lcd_3f(0x3F, 16, 2);
 #endif
@@ -256,6 +258,11 @@ Adafruit_BME280 bme280;
 /*****************************************************************/
 OneWire oneWire(DS18B20_PIN);
 DallasTemperature ds18b20(&oneWire);
+
+/*****************************************************************
+/* SHT30 declaration                                            *
+/*****************************************************************/
+SHT3X sht30(0x45);
 
 /*****************************************************************
 /* GPS declaration                                               *
@@ -353,6 +360,8 @@ String last_value_BME280_T = "";
 String last_value_BME280_H = "";
 String last_value_BME280_P = "";
 String last_value_DS18B20_T = "";
+String last_value_SHT30_T = "";
+String last_value_SHT30_H = "";
 String last_data_string = "";
 
 String last_gps_lat;
@@ -650,6 +659,7 @@ void copyExtDef() {
 	setDef(bmp280_read, BMP280_READ);
 	setDef(bme280_read, BME280_READ);
 	setDef(ds18b20_read, DS18B20_READ);
+	setDef(sht30_read, SHT30_READ);
 	setDef(gps_read, GPS_READ);
 	setDef(send2dusti, SEND2DUSTI);
 	setDef(send2madavi, SEND2MADAVI);
@@ -733,6 +743,7 @@ void readConfig() {
 					setFromJSON(bmp280_read);
 					setFromJSON(bme280_read);
 					setFromJSON(ds18b20_read);
+					setFromJSON(sht30_read);
 					setFromJSON(gps_read);
 					setFromJSON(send2dusti);
 					setFromJSON(send2madavi);
@@ -803,6 +814,7 @@ void writeConfig() {
 	copyToJSON_Bool(bmp280_read);
 	copyToJSON_Bool(bme280_read);
 	copyToJSON_Bool(ds18b20_read);
+	copyToJSON_Bool(sht30_read);
 	copyToJSON_Bool(gps_read);
 	copyToJSON_Bool(send2dusti);
 	copyToJSON_Bool(send2madavi);
@@ -1110,6 +1122,7 @@ void webserver_config() {
 		page_content += form_checkbox("bmp280_read", FPSTR(INTL_BMP280), bmp280_read);
 		page_content += form_checkbox("bme280_read", FPSTR(INTL_BME280), bme280_read);
 		page_content += form_checkbox("ds18b20_read", FPSTR(INTL_DS18B20), ds18b20_read);
+		page_content += form_checkbox("sht30_read", FPSTR(INTL_SHT30), sht30_read);
 		page_content += form_checkbox("gps_read", FPSTR(INTL_NEO6M), gps_read);
 		page_content += F("<br/><b>"); page_content += FPSTR(INTL_WEITERE_EINSTELLUNGEN); page_content += F("</b><br/>");
 		page_content += form_checkbox("auto_update", FPSTR(INTL_AUTO_UPDATE), auto_update);
@@ -1176,6 +1189,7 @@ void webserver_config() {
 		readBoolParam(bmp280_read);
 		readBoolParam(bme280_read);
 		readBoolParam(ds18b20_read);
+		readBoolParam(sht30_read);
 		readBoolParam(gps_read);
 		readBoolParam(auto_update);
 		readBoolParam(has_display);
@@ -1219,6 +1233,7 @@ void webserver_config() {
 		page_content += line_from_value(tmpl(FPSTR(INTL_LESE), "BMP280"), String(bmp280_read));
 		page_content += line_from_value(tmpl(FPSTR(INTL_LESE), "BME280"), String(bme280_read));
 		page_content += line_from_value(tmpl(FPSTR(INTL_LESE), "DS18B20"), String(ds18b20_read));
+		page_content += line_from_value(tmpl(FPSTR(INTL_LESE), "SHT30"), String(sht30_read));
 		page_content += line_from_value(tmpl(FPSTR(INTL_LESE), "GPS"), String(gps_read));
 		page_content += line_from_value(FPSTR(INTL_AUTO_UPDATE), String(auto_update));
 		page_content += line_from_value(FPSTR(INTL_DISPLAY), String(has_display));
@@ -1373,6 +1388,11 @@ void webserver_values() {
 		if (ds18b20_read) {
 			page_content += empty_row;
 			page_content += table_row_from_value("DS18B20", FPSTR(INTL_TEMPERATUR), last_value_DS18B20_T, "°C");
+		}
+		if (sht30_read) {
+			page_content += empty_row;
+			page_content += table_row_from_value("SHT30", FPSTR(INTL_TEMPERATUR), last_value_SHT30_T, "°C");
+			page_content += table_row_from_value("SHT30", FPSTR(INTL_LUFTFEUCHTE), last_value_SHT30_H, "%");
 		}
 
 		page_content += empty_row;
@@ -1615,6 +1635,7 @@ void wifiConfig() {
 	debug_out(F("SDS_read: "), DEBUG_MIN_INFO, 0); debug_out(String(sds_read), DEBUG_MIN_INFO, 1);
 	debug_out(F("BMP_read: "), DEBUG_MIN_INFO, 0); debug_out(String(bmp_read), DEBUG_MIN_INFO, 1);
 	debug_out(F("DS18B20_read: "), DEBUG_MIN_INFO, 0); debug_out(String(ds18b20_read), DEBUG_MIN_INFO, 1);
+	debug_out(F("SHT30_read: "), DEBUG_MIN_INFO, 0); debug_out(String(sht30_read), DEBUG_MIN_INFO, 1);
 	debug_out(F("Dusti: "), DEBUG_MIN_INFO, 0); debug_out(String(send2dusti), DEBUG_MIN_INFO, 1);
 	debug_out(F("Madavi: "), DEBUG_MIN_INFO, 0); debug_out(String(send2madavi), DEBUG_MIN_INFO, 1);
 	debug_out(F("CSV: "), DEBUG_MIN_INFO, 0); debug_out(String(send2csv), DEBUG_MIN_INFO, 1);
@@ -2141,6 +2162,39 @@ String sensorDS18B20() {
 	}
 	debug_out(F("------"), DEBUG_MIN_INFO, 1);
 	debug_out(F("End reading DS18B20"), DEBUG_MED_INFO, 1);
+
+	return s;
+}
+
+/*****************************************************************
+/* read SHT30 sensor values                                     *
+/*****************************************************************/
+String sensorSHT30() {
+	String s = "";
+	float t;
+	float h;
+	byte ret;
+
+	debug_out(F("Start reading SHT30"), DEBUG_MED_INFO, 1);
+
+	ret = sht30.get();
+	t = sht30.cTemp;
+	h = sht30.humidity;
+	if (isnan(t) || isnan(h) || ret!=0) {
+		debug_out(F("SHT30 couldn't be read"), DEBUG_ERROR, 1);
+	} else {
+		debug_out(F("Temperature : "), DEBUG_MIN_INFO, 0);
+		debug_out(Float2String(t) + " C", DEBUG_MIN_INFO, 1);
+		debug_out(F("humidity : "), DEBUG_MIN_INFO, 0);
+		debug_out(Float2String(h) + " %", DEBUG_MIN_INFO, 1);
+		last_value_SHT30_T = Float2String(t);
+		last_value_SHT30_H = Float2String(h);
+		s += Value2Json(F("SHT30_temperature"), last_value_SHT30_T);
+		s += Value2Json(F("SHT30_humidity"), last_value_SHT30_H);
+	}
+	debug_out(F("------"), DEBUG_MIN_INFO, 1);
+
+	debug_out(F("End reading SHT30"), DEBUG_MED_INFO, 1);
 
 	return s;
 }
@@ -2741,7 +2795,13 @@ bool initBME280(char addr) {
 /*****************************************************************/
 void setup() {
 	Serial.begin(9600);					// Output to Serial at 9600 baud
-#if defined(ESP8266)
+  Serial.print(ARDUINO_ESP8266_WEMOS_D1MINI);
+  Serial.println(ESP8266);
+#if defined(ARDUINO_ESP8266_WEMOS_D1MINI)
+  Wire.begin(I2C_SDA, I2C_SCL);
+  esp_chipid = String(ESP.getChipId());
+  WiFi.persistent(false);
+#elif defined(ESP8266)
 	Wire.begin(D3, D4);
 	esp_chipid = String(ESP.getChipId());
 	WiFi.persistent(false);
@@ -2801,6 +2861,7 @@ void setup() {
 	if (bmp280_read) { debug_out(F("Lese BMP280..."), DEBUG_MIN_INFO, 1); }
 	if (bme280_read) { debug_out(F("Lese BME280..."), DEBUG_MIN_INFO, 1); }
 	if (ds18b20_read) { debug_out(F("Lese DS18B20..."), DEBUG_MIN_INFO, 1); }
+	if (sht30_read) { debug_out(F("Lese SHT30..."), DEBUG_MIN_INFO, 1); }
 	if (gps_read) { debug_out(F("Lese GPS..."), DEBUG_MIN_INFO, 1); }
 	if (send2dusti) { debug_out(F("Sende an luftdaten.info..."), DEBUG_MIN_INFO, 1); }
 	if (send2madavi) { debug_out(F("Sende an madavi.de..."), DEBUG_MIN_INFO, 1); }
@@ -2873,6 +2934,7 @@ void loop() {
 	String result_BMP280 = "";
 	String result_BME280 = "";
 	String result_DS18B20 = "";
+	String result_SHT30 = "";
 	String result_GPS = "";
 	String signal_strength = "";
 
@@ -2955,6 +3017,11 @@ void loop() {
 		if (ds18b20_read) {
 			debug_out(F("Call sensorDS18B20"), DEBUG_MAX_INFO, 1);
 			result_DS18B20 = sensorDS18B20();     // getting temperature (optional)
+		}
+
+		if (sht30_read) {
+			debug_out(F("Call sensorSHT30"), DEBUG_MAX_INFO, 1);
+			result_SHT30 = sensorSHT30();     // getting temperature (optional)
 		}
 	}
 
@@ -3063,6 +3130,16 @@ void loop() {
 				debug_out(F("## Sending to luftdaten.info (DS18B20): "), DEBUG_MIN_INFO, 1);
 				start_send = micros();
 				sendLuftdaten(result_DS18B20, BME280_API_PIN, host_dusti, httpPort_dusti, url_dusti, "DS18B20_");
+				sum_send_time += micros() - start_send;
+			}
+		}
+
+		if (sht30_read) {
+			data += result_SHT30;
+			if (send2dusti) {
+				debug_out(F("## Sending to luftdaten.info (SHT30): "), DEBUG_MIN_INFO, 1);
+				start_send = micros();
+				sendLuftdaten(result_SHT30, SHT30_API_PIN, host_dusti, httpPort_dusti, url_dusti, "SHT_");
 				sum_send_time += micros() - start_send;
 			}
 		}
