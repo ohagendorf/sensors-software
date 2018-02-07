@@ -72,6 +72,24 @@
 #define SOFTWARE_VERSION "NRZ-2017-100"
 
 /*****************************************************************
+/*                                                               *
+/* This config changes the gpio config for wemos shields, e.g.   *
+/* OneWire pin is D2, I2C pins are D1 and D2, DHT pin is D4.     *
+/* The SoftSerial pins for SDS011 are D7 and D8.                 *
+/* When using the display option, the display size is adapted    *
+/* for the wemos 0.66'' OLED shield.                             *
+/*                                                               *
+/*****************************************************************/
+#if defined(ARDUINO_ESP8266_WEMOS_D1MINI)
+#define WEMOS_SHIELD_CONFIG
+// in preparation for esp8266 v2.4
+//#elif defined(ARDUINO_ESP8266_WEMOS_D1MINIPRO)
+//#define WEMOS_SHIELD_CONFIG
+//#elif defined(ARDUINO_ESP8266_WEMOS_D1MINILITE)
+//#define WEMOS_SHIELD_CONFIG
+#endif
+
+/*****************************************************************
 /* Includes                                                      *
 /*****************************************************************/
 #if defined(ESP8266)
@@ -415,7 +433,11 @@ void display_debug(const String& text) {
 		display.displayOn();
 		display.setFont(Monospaced_plain_9);
 		display.setTextAlignment(TEXT_ALIGN_LEFT);
+#if defined(WEMOS_SHIELD_CONFIG)
+		display.drawStringMaxWidth(32, 0, 64, text);
+#else
 		display.drawStringMaxWidth(0, 12, 120, text);
+#endif
 		display.display();
 	}
 #endif
@@ -2669,6 +2691,13 @@ void display_values(const String& value_DHT_T, const String& value_DHT_H, const 
 		h_value = last_value_BME280_H; h_sensor = "BME280";
 		p_value = last_value_BME280_P; p_sensor = "BME280";
 	}
+	if (ds18b20_read) {
+		t_value = last_value_BME280_T; t_sensor = "DS18B20";
+	}
+	if (sht30_read) {
+		t_value = last_value_SHT30_T; t_sensor = "SHT30";
+		h_value = last_value_SHT30_H; h_sensor = "SHT30";
+	}
 	if (ppd_read) {
 		pm10_value = last_value_PPD_P1; pm10_sensor = "PPD42NS";
 		pm25_value = last_value_PPD_P2; pm25_sensor = "PPD42NS";
@@ -2694,6 +2723,18 @@ void display_values(const String& value_DHT_T, const String& value_DHT_H, const 
 		display.setFont(Monospaced_plain_9);
 		display.setTextAlignment(TEXT_ALIGN_LEFT);
 		value_count = 0;
+#if defined(WEMOS_SHIELD_CONFIG)
+		display.drawStringMaxWidth(32, 10 * (value_count++), 64,"Temp:" + t_value+"°C");
+		display.drawStringMaxWidth(32, 10 * (value_count++), 64, "Hum.:" + h_value+"%");
+		if (ppd_read) {
+			display.drawStringMaxWidth(32, 10 * (value_count++), 64, "PPD P1: " + value_PPD_P1);
+			display.drawStringMaxWidth(32, 10 * (value_count++), 64, "PPD P2: " + value_PPD_P2);
+		}
+		if (sds_read) {
+			display.drawStringMaxWidth(32, 10 * (value_count++), 64, "SDS P1: " + value_SDS_P1);
+			display.drawStringMaxWidth(32, 10 * (value_count++), 64, "SDS P2: " + value_SDS_P2);
+		}
+#else
 		display.drawString(0, 10 * (value_count++), "Temp:" + t_value + "  Hum.:" + h_value);
 		if (ppd_read) {
 			display.drawString(0, 10 * (value_count++), "PPD P1: " + value_PPD_P1);
@@ -2710,6 +2751,7 @@ void display_values(const String& value_DHT_T, const String& value_DHT_H, const 
 			}
 			display.drawString(0, 10 * (value_count++), "satellites: " + String(gps.satellites.value()));
 		}
+#endif
 		display.display();
 	}
 	
@@ -2795,14 +2837,12 @@ bool initBME280(char addr) {
 /*****************************************************************/
 void setup() {
 	Serial.begin(9600);					// Output to Serial at 9600 baud
-  Serial.print(ARDUINO_ESP8266_WEMOS_D1MINI);
-  Serial.println(ESP8266);
-#if defined(ARDUINO_ESP8266_WEMOS_D1MINI)
+#if defined(WEMOS_SHIELD_CONFIG)
   Wire.begin(I2C_SDA, I2C_SCL);
-  esp_chipid = String(ESP.getChipId());
-  WiFi.persistent(false);
 #elif defined(ESP8266)
 	Wire.begin(D3, D4);
+#endif
+#if defined(ESP8266)
 	esp_chipid = String(ESP.getChipId());
 	WiFi.persistent(false);
 #endif
